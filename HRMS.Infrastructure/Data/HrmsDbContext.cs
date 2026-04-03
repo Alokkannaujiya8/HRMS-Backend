@@ -11,20 +11,16 @@ namespace HRMS.Infrastructure.Data
     public class HrmsDbContext : DbContext
 
     {
-        //    public HrmsDbContext(DbContextOptions<HrmsDbContext> options)
-        //    : base(options)
-        //    {
-        //    }
-
-        //    public DbSet<Employee> Employees { get; set; }
-
-        //}
+        
         public HrmsDbContext(DbContextOptions<HrmsDbContext> options)
            : base(options)
         {
         }
 
         public DbSet<Employee> Employees { get; set; }
+        public DbSet<Department> Departments { get; set; }
+        public DbSet<Payroll> Payrolls { get; set; }
+        public DbSet<AppUser> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

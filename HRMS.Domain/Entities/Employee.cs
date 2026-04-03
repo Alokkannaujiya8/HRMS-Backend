@@ -18,6 +18,10 @@ namespace HRMS.Domain.Entities
 
         public decimal Salary { get; set; }
 
+        public int DepartmentId { get; set; }
+
+        public Department? Department { get; set; }
+
         public DateTime JoinDate { get; set; }
     }
 }

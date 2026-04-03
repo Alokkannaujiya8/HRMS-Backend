@@ -32,21 +32,21 @@ namespace HRMS.API.Controllers
         public async Task<IActionResult> AddEmployee(Employee emp)
         {
             await _service.AddEmployee(emp);
-            return Ok();
+            return Ok("Employee Added");
         }
 
         [HttpPut]
         public async Task<IActionResult> UpdateEmployee(Employee emp)
         {
             await _service.UpdateEmployee(emp);
-            return Ok();
+            return Ok("Employee Updated");
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEmployee(int id)
         {
             await _service.DeleteEmployee(id);
-            return Ok();
+            return Ok("Employee Deleted");
         }
     }
 }
