@@ -1,7 +1,4 @@
-﻿
-
 using HRMS.Application.Interfaces;
-using HRMS.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -10,7 +7,7 @@ using System.Text;
 
 namespace HRMS.Infrastructure.Services
 {
-    public class JwtService: IJwtService
+    public class JwtService : IJwtService
     {
         private readonly IConfiguration _config;
 
@@ -23,9 +20,9 @@ namespace HRMS.Infrastructure.Services
         {
             var claims = new[]
             {
-            new Claim(ClaimTypes.Name, username),
-            new Claim(ClaimTypes.Role, role)
-        };
+                new Claim(ClaimTypes.Name, username),
+                new Claim(ClaimTypes.Role, role)
+            };
 
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_config["Jwt:Key"])
@@ -45,11 +42,6 @@ namespace HRMS.Infrastructure.Services
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        public object GenerateToken(AppUser user)
-        {
-            throw new NotImplementedException();
         }
     }
 }

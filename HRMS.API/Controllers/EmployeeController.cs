@@ -1,6 +1,5 @@
-﻿using HRMS.Application.Interfaces;
+using HRMS.Application.Interfaces;
 using HRMS.Domain.Entities;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HRMS.API.Controllers

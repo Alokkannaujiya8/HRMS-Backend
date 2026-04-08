@@ -1,8 +1,7 @@
-﻿using HRMS.Domain.Entities;
+using HRMS.Domain.Entities;
 using HRMS.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
 
 namespace HRMS.API.Controllers
 {
@@ -24,13 +23,12 @@ namespace HRMS.API.Controllers
             return Ok(departments);
         }
 
-        
         [HttpPost]
         public async Task<IActionResult> AddDepartment(Department dept)
         {
             await _context.Departments.AddAsync(dept);
             await _context.SaveChangesAsync();
-            return Ok(dept); 
+            return Ok(dept);
         }
     }
 }

@@ -1,8 +1,7 @@
-﻿using HRMS.Domain.Entities;
+using HRMS.Domain.Entities;
 using HRMS.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
 
 namespace HRMS.API.Controllers
 {

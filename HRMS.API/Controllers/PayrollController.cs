@@ -1,8 +1,7 @@
-﻿using HRMS.Domain.Entities;
+using HRMS.Domain.Entities;
 using HRMS.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
 
 namespace HRMS.API.Controllers
 {
@@ -17,7 +16,6 @@ namespace HRMS.API.Controllers
             _context = context;
         }
 
-        
         [HttpGet]
         public async Task<IActionResult> GetPayrolls()
         {
@@ -25,7 +23,6 @@ namespace HRMS.API.Controllers
             return Ok(payrolls);
         }
 
-        
         [HttpPost]
         public async Task<IActionResult> AddPayroll(Payroll payroll)
         {

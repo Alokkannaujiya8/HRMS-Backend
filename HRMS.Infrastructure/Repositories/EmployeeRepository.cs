@@ -1,12 +1,7 @@
-﻿using HRMS.Application.Interfaces;
+using HRMS.Application.Interfaces;
 using HRMS.Domain.Entities;
 using HRMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace HRMS.Infrastructure.Repositories
 {
@@ -19,10 +14,6 @@ namespace HRMS.Infrastructure.Repositories
             _context = context;
         }
 
-        //public async Task<List<Employee>> GetAllAsync()
-        //{
-        //    return await _context.Employees.ToListAsync();
-        //}
         public async Task<List<Employee>> GetAllAsync()
         {
             return await _context.Employees
@@ -30,11 +21,10 @@ namespace HRMS.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-         public async Task<Employee> GetByIdAsync(int id)
-    {
-        return await _context.Employees.FindAsync(id);
-    }
-
+        public async Task<Employee> GetByIdAsync(int id)
+        {
+            return await _context.Employees.FindAsync(id);
+        }
 
         public async Task AddAsync(Employee employee)
         {

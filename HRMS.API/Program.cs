@@ -10,7 +10,6 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 
 
 builder.Services.AddControllers()
@@ -19,7 +18,6 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<HrmsDbContext>(options =>
@@ -28,12 +26,11 @@ builder.Services.AddDbContext<HrmsDbContext>(options =>
         b => b.MigrationsAssembly("HRMS.Infrastructure")
     ));
 
-// Dependency Injections
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
-// JWT Authentication Setup
 builder.Services.AddAuthentication("Bearer")
 .AddJwtBearer(options =>
 {
@@ -54,7 +51,6 @@ builder.Services.AddAuthentication("Bearer")
     };
 });
 
-// CORS Setup for Angular
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularApp",
