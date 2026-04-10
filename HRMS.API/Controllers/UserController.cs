@@ -15,7 +15,6 @@ namespace HRMS.API.Controllers
         {
             _context = context;
         }
-
         [HttpGet]
         public async Task<IActionResult> GetUsers()
         {
