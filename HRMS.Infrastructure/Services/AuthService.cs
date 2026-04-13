@@ -30,6 +30,8 @@ namespace HRMS.Infrastructure.Services
             {
                 Username = request.Username,
                 Password = passwordHash,
+
+
                 Role = string.IsNullOrWhiteSpace(request.Role) ? "Employee" : request.Role
             };
 

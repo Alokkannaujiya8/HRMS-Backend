@@ -24,6 +24,8 @@ namespace HRMS.API.Controllers
                 return BadRequest(response);
 
             return Ok(response);
+
+
         }
 
         [HttpPost("login")]
@@ -38,3 +40,4 @@ namespace HRMS.API.Controllers
         }
     }
 }
+    

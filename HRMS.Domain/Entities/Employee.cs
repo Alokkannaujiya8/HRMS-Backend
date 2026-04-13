@@ -17,5 +17,7 @@ namespace HRMS.Domain.Entities
         public Department? Department { get; set; }
 
         public DateTime JoinDate { get; set; }
+
+        public bool IsActive { get; set; } = true;
     }
 }
