@@ -1,6 +1,7 @@
-using HRMS.Application.Interfaces;
+﻿using HRMS.Application.Interfaces;
 using HRMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using System.IO;
 
 namespace HRMS.API.Controllers
 {
@@ -47,6 +48,31 @@ namespace HRMS.API.Controllers
             await _service.DeleteEmployee(id);
             return Ok("Employee Deleted");
         }
-    }
+
+
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadPhoto(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No File uploaded");
+
+
+            var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+
+            if (!Directory.Exists(uploadFolder))
+                Directory.CreateDirectory(uploadFolder);
+
+
+            var uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+            var filePath = Path.Combine(uploadFolder, uniqueFileName);
+
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(fileStream);
+            }
+
+            return Ok(new { photoUrl = $"/uploads/{uniqueFileName}" });
+        }
+    } 
 }
 

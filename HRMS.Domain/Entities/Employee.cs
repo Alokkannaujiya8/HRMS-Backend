@@ -19,5 +19,9 @@ namespace HRMS.Domain.Entities
         public DateTime JoinDate { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+
+        public string? PhotoUrl { get; set; }   
+
     }
 }
