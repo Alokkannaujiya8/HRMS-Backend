@@ -1,4 +1,4 @@
-﻿using HRMS.Application.DTOs;
+using HRMS.Application.DTOs;
 
 
 namespace HRMS.Application.Interfaces
@@ -7,5 +7,6 @@ namespace HRMS.Application.Interfaces
     {
         Task<AuthResponse> RegisterAsync(RegisterRequest request);
         Task<AuthResponse> LoginAsync(LoginRequest request);
+        Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request);
     }
 }

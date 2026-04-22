@@ -1,8 +1,11 @@
 using HRMS.Application.DTOs;
 using HRMS.Application.Interfaces;
+using HRMS.Application.Security;
 using HRMS.Domain.Entities;
 using HRMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace HRMS.Infrastructure.Services
 {
@@ -24,15 +27,23 @@ namespace HRMS.Infrastructure.Services
                 return new AuthResponse { Message = "Username already exists!" };
             }
 
+            if (request.EmployeeId.HasValue)
+            {
+                var employeeExists = await _context.Employees.AnyAsync(e => e.Id == request.EmployeeId.Value && e.IsActive);
+                if (!employeeExists)
+                {
+                    return new AuthResponse { Message = "Employee mapping is invalid." };
+                }
+            }
+
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             var newUser = new AppUser
             {
                 Username = request.Username,
                 Password = passwordHash,
-
-
-                Role = string.IsNullOrWhiteSpace(request.Role) ? "Employee" : request.Role
+                Role = string.IsNullOrWhiteSpace(request.Role) ? "Employee" : request.Role,
+                EmployeeId = request.EmployeeId
             };
 
             await _context.Users.AddAsync(newUser);
@@ -50,21 +61,91 @@ namespace HRMS.Infrastructure.Services
                 return new AuthResponse { Message = "Invalid Username or Password" };
             }
 
-            var accessToken = _jwtService.GenerateToken(user.Username, user.Role);
+            return await CreateTokenResponseAsync(user, "Login Successful");
+        }
 
-            var refreshToken = Guid.NewGuid().ToString();
+        public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+            {
+                return new AuthResponse { Message = "Invalid refresh token." };
+            }
 
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
+            var incomingHash = ComputeHash(request.RefreshToken);
+
+            var existingToken = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.TokenHash == incomingHash);
+
+            if (existingToken == null || existingToken.User == null || existingToken.IsRevoked)
+            {
+                return new AuthResponse { Message = "Invalid refresh token." };
+            }
+
+            if (existingToken.ExpiresAt <= DateTime.UtcNow)
+            {
+                existingToken.IsRevoked = true;
+                existingToken.RevokedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return new AuthResponse { Message = "Refresh token expired." };
+            }
+
+            existingToken.IsRevoked = true;
+            existingToken.RevokedAt = DateTime.UtcNow;
+
+            return await CreateTokenResponseAsync(existingToken.User, "Token refreshed successfully.");
+        }
+
+        private async Task<AuthResponse> CreateTokenResponseAsync(AppUser user, string message)
+        {
+            var role = user.Role ?? "Employee";
+            var permissions = RolePermissionStore.GetPermissionsForRole(role);
+
+            var accessToken = _jwtService.GenerateToken(
+                user.Username ?? string.Empty,
+                role,
+                user.EmployeeId,
+                permissions);
+
+            var refreshTokenPlain = GenerateSecureToken();
+            var refreshTokenHash = ComputeHash(refreshTokenPlain);
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                UserId = user.Id,
+                TokenHash = refreshTokenHash,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                IsRevoked = false
+            };
+
+            await _context.RefreshTokens.AddAsync(refreshTokenEntity);
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+
             await _context.SaveChangesAsync();
 
             return new AuthResponse
             {
                 Token = accessToken,
-                RefreshToken = refreshToken,
-                Role = user.Role,
-                Message = "Login Successful"
+                RefreshToken = refreshTokenPlain,
+                Role = role,
+                Permissions = permissions.ToList(),
+                Message = message
             };
+        }
+
+        private static string GenerateSecureToken()
+        {
+            var randomBytes = RandomNumberGenerator.GetBytes(64);
+            return Convert.ToBase64String(randomBytes);
+        }
+
+        private static string ComputeHash(string rawValue)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawValue));
+            return Convert.ToHexString(bytes);
         }
     }
 }

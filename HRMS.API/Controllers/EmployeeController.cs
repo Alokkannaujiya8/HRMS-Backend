@@ -10,10 +10,17 @@ namespace HRMS.API.Controllers
     public class EmployeeController : ControllerBase
     {
         private readonly IEmployeeService _service;
+        private readonly IEmailService _emailService;
+        private readonly ILogger<EmployeeController> _logger;
 
-        public EmployeeController(IEmployeeService service)
+        public EmployeeController(
+            IEmployeeService service,
+            IEmailService emailService,
+            ILogger<EmployeeController> logger)
         {
             _service = service;
+            _emailService = emailService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -32,6 +39,31 @@ namespace HRMS.API.Controllers
         public async Task<IActionResult> AddEmployee(Employee emp)
         {
             await _service.AddEmployee(emp);
+
+            if (!string.IsNullOrWhiteSpace(emp.Email))
+            {
+                var displayName = string.IsNullOrWhiteSpace(emp.Name) ? "Employee" : emp.Name;
+
+                var htmlBody = $@"
+                    <h2>Welcome to HRMS, {displayName}!</h2>
+                    <p>Your employee profile has been created successfully.</p>
+                    <p>We're excited to have you onboard.</p>
+                    <br />
+                    <p>Regards,<br />HR Team</p>";
+
+                try
+                {
+                    await _emailService.SendEmailAsync(
+                        emp.Email,
+                        "Welcome to HRMS",
+                        htmlBody);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send welcome email to {Email}", emp.Email);
+                }
+            }
+
             return Ok("Employee Added");
         }
 

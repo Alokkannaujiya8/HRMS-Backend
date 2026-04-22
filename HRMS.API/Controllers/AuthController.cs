@@ -20,7 +20,7 @@ namespace HRMS.API.Controllers
         {
             var response = await _authService.RegisterAsync(request);
 
-            if (response.Message == "Username already exists!")
+            if (response.Message == "Username already exists!" || response.Message == "Employee mapping is invalid.")
                 return BadRequest(response);
 
             return Ok(response);
@@ -35,6 +35,19 @@ namespace HRMS.API.Controllers
 
             if (response.Message == "Invalid Username or Password")
                 return Unauthorized(response);
+
+            return Ok(response);
+        }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            var response = await _authService.RefreshTokenAsync(request);
+
+            if (response.Message is "Invalid refresh token." or "Refresh token expired.")
+            {
+                return Unauthorized(response);
+            }
 
             return Ok(response);
         }

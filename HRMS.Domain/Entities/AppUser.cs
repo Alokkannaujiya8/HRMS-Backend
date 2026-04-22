@@ -12,8 +12,12 @@ namespace HRMS.Domain.Entities
 
         public string? Role { get; set; }
 
+        public int? EmployeeId { get; set; }
+
         public string? RefreshToken { get; set; }
 
         public DateTime? RefreshTokenExpiryTime { get; set; }
+
+        public ICollection<RefreshToken>? RefreshTokens { get; set; }
     }
 }
