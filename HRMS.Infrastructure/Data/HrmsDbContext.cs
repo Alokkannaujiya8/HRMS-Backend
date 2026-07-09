@@ -38,6 +38,8 @@ namespace HRMS.Infrastructure.Data
         public DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
         public DbSet<SalaryManagement> SalaryManagements { get; set; }
         public DbSet<Holiday> Holidays { get; set; }
+        public DbSet<Asset> Assets { get; set; }
+        public DbSet<AssetAssignment> AssetAssignments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -162,6 +164,26 @@ namespace HRMS.Infrastructure.Data
             modelBuilder.Entity<Holiday>()
                 .HasIndex(h => h.HolidayDate)
                 .IsUnique();
+
+            modelBuilder.Entity<Asset>()
+                .Property(a => a.Value)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Asset>()
+                .HasIndex(a => a.AssetTag)
+                .IsUnique();
+
+            modelBuilder.Entity<AssetAssignment>()
+                .HasOne(aa => aa.Asset)
+                .WithMany()
+                .HasForeignKey(aa => aa.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AssetAssignment>()
+                .HasOne(aa => aa.Employee)
+                .WithMany()
+                .HasForeignKey(aa => aa.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -114,6 +114,7 @@ namespace HRMS.API.Extensions
             services.AddScoped<IEmployeeDetailsService, EmployeeDetailsService>();
             services.AddScoped<IAttendanceAutomationJobService, AttendanceAutomationJobService>();
             services.AddScoped<ILeaveBalanceAutomationJobService, LeaveBalanceAutomationJobService>();
+            services.AddScoped<IAssetService, AssetService>();
 
             services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
             services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
