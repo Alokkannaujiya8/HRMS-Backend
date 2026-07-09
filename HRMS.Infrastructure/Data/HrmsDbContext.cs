@@ -37,6 +37,7 @@ namespace HRMS.Infrastructure.Data
         public DbSet<EmployeeRemark> EmployeeRemarks { get; set; }
         public DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
         public DbSet<SalaryManagement> SalaryManagements { get; set; }
+        public DbSet<Holiday> Holidays { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -157,6 +158,10 @@ namespace HRMS.Infrastructure.Data
             modelBuilder.Entity<SalaryManagement>()
                 .Property(sm => sm.TotalSalary)
                 .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Holiday>()
+                .HasIndex(h => h.HolidayDate)
+                .IsUnique();
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

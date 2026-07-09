@@ -5,10 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HRMS.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
     [Authorize]
-    public class PayslipController : ControllerBase
+    public class PayslipController : ApiControllerBase
     {
         private readonly IPayslipService _payslipService;
 

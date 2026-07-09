@@ -1,6 +1,8 @@
-﻿using HRMS.Application.DTOs;
+using HRMS.Application.DTOs;
 using HRMS.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HRMS.API.Controllers
 {
@@ -21,11 +23,11 @@ namespace HRMS.API.Controllers
             var response = await _authService.RegisterAsync(request);
 
             if (response.Message == "Username already exists!" || response.Message == "Employee mapping is invalid.")
+            {
                 return BadRequest(response);
+            }
 
             return Ok(response);
-
-
         }
 
         [HttpPost("login")]
@@ -34,7 +36,9 @@ namespace HRMS.API.Controllers
             var response = await _authService.LoginAsync(request);
 
             if (response.Message == "Invalid Username or Password")
+            {
                 return Unauthorized(response);
+            }
 
             return Ok(response);
         }
@@ -51,6 +55,23 @@ namespace HRMS.API.Controllers
 
             return Ok(response);
         }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var username = User.FindFirstValue(ClaimTypes.Name);
+            var response = await _authService.ChangePasswordAsync(username ?? string.Empty, request);
+
+            if (response.Message is "User not found."
+                or "New password must be at least 6 characters."
+                or "New password and confirm password do not match."
+                or "Current password is incorrect.")
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
     }
 }
-    

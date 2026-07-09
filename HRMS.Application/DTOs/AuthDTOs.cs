@@ -1,12 +1,14 @@
 
 
+using HRMS.Application.Security;
+
 namespace HRMS.Application.DTOs
 {
     public class RegisterRequest
     {
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public string Role { get; set; } = "Employee";
+        public string Role { get; set; } = AppRoles.Employee;
         public int? EmployeeId { get; set; }
     }
 
@@ -14,6 +16,13 @@ namespace HRMS.Application.DTOs
     {
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+    }
+
+    public class ChangePasswordRequest
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 
     public class AuthResponse

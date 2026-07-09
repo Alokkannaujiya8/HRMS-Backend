@@ -11,7 +11,7 @@ namespace HRMS.Application.Security
 
             return role.Trim().ToUpperInvariant() switch
             {
-                "ADMIN" => new[]
+                AppRoles.NormalizedAdmin => new[]
                 {
                     PermissionConstants.CanViewSalary,
                     PermissionConstants.CanEditAttendance,
@@ -19,7 +19,7 @@ namespace HRMS.Application.Security
                     PermissionConstants.CanManageDepartments,
                     PermissionConstants.CanManageUsers
                 },
-                "HR" => new[]
+                AppRoles.NormalizedHr => new[]
                 {
                     PermissionConstants.CanViewSalary,
                     PermissionConstants.CanEditAttendance,
@@ -27,7 +27,7 @@ namespace HRMS.Application.Security
                     PermissionConstants.CanManageDepartments,
                     PermissionConstants.CanManageUsers
                 },
-                "EMPLOYEE" => new[]
+                AppRoles.NormalizedEmployee => new[]
                 {
                     PermissionConstants.CanEditAttendance
                 },

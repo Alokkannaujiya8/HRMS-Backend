@@ -1,4 +1,5 @@
 using HRMS.Application.Interfaces;
+using HRMS.Domain.Constants;
 using HRMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
@@ -39,7 +40,7 @@ namespace HRMS.Infrastructure.Services
                 .CountAsync(a => a.EmployeeId == employeeId
                     && a.AttendanceDate.Year == year
                     && a.AttendanceDate.Month == month
-                    && a.Status == "Present"
+                    && a.Status == AttendanceStatuses.Present
                     && a.CheckInTime.HasValue);
 
             var totalDays = DateTime.DaysInMonth(year, month);

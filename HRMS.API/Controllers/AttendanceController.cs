@@ -1,25 +1,27 @@
 using HRMS.API.Authorization;
-using HRMS.Infrastructure.Data;
+using HRMS.Application.Interfaces;
+using HRMS.Application.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace HRMS.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
     [Authorize]
-    public class AttendanceController : ControllerBase
+    public class AttendanceController : ApiControllerBase
     {
-        private readonly HrmsDbContext _context;
+        private readonly IAttendanceService _attendanceService;
+        private readonly IAttendanceReportingService _attendanceReportingService;
 
-        public AttendanceController(HrmsDbContext context)
+        public AttendanceController(
+            IAttendanceService attendanceService,
+            IAttendanceReportingService attendanceReportingService)
         {
-            _context = context;
+            _attendanceService = attendanceService;
+            _attendanceReportingService = attendanceReportingService;
         }
 
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = AppRoles.Employee)]
         [HttpPost("check-in")]
         public async Task<IActionResult> CheckIn()
         {
@@ -29,38 +31,10 @@ namespace HRMS.API.Controllers
                 return BadRequest("Employee mapping not found for logged-in user.");
             }
 
-            var today = DateTime.UtcNow.Date;
-            var existing = await _context.Attendances
-                .FirstOrDefaultAsync(x => x.EmployeeId == employeeId.Value && x.AttendanceDate == today);
-
-            if (existing != null && existing.CheckInTime.HasValue)
-            {
-                return BadRequest("Already checked in for today.");
-            }
-
-            if (existing == null)
-            {
-                existing = new Domain.Entities.Attendance
-                {
-                    EmployeeId = employeeId.Value,
-                    AttendanceDate = today,
-                    CheckInTime = DateTime.UtcNow,
-                    Status = "Present"
-                };
-
-                await _context.Attendances.AddAsync(existing);
-            }
-            else
-            {
-                existing.CheckInTime = DateTime.UtcNow;
-                existing.Status = "Present";
-            }
-
-            await _context.SaveChangesAsync();
-            return Ok(new { Message = "Check-in successful.", existing.Id, existing.CheckInTime });
+            return Ok(await _attendanceService.CheckInAsync(employeeId.Value));
         }
 
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = AppRoles.Employee)]
         [HttpPost("check-out")]
         public async Task<IActionResult> CheckOut()
         {
@@ -70,34 +44,10 @@ namespace HRMS.API.Controllers
                 return BadRequest("Employee mapping not found for logged-in user.");
             }
 
-            var today = DateTime.UtcNow.Date;
-            var attendance = await _context.Attendances
-                .FirstOrDefaultAsync(x => x.EmployeeId == employeeId.Value && x.AttendanceDate == today);
-
-            if (attendance == null || !attendance.CheckInTime.HasValue)
-            {
-                return BadRequest("Check-in not found for today.");
-            }
-
-            if (attendance.CheckOutTime.HasValue)
-            {
-                return BadRequest("Already checked out for today.");
-            }
-
-            attendance.CheckOutTime = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            var totalHours = (attendance.CheckOutTime.Value - attendance.CheckInTime.Value).TotalHours;
-            return Ok(new
-            {
-                Message = "Check-out successful.",
-                attendance.Id,
-                attendance.CheckOutTime,
-                TotalHours = Math.Round(totalHours, 2)
-            });
+            return Ok(await _attendanceService.CheckOutAsync(employeeId.Value));
         }
 
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = AppRoles.Employee)]
         [HttpGet("my")]
         public async Task<IActionResult> GetMyAttendance([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
         {
@@ -107,97 +57,120 @@ namespace HRMS.API.Controllers
                 return BadRequest("Employee mapping not found for logged-in user.");
             }
 
-            var query = _context.Attendances
-                .Include(x => x.Employee)
-                .Where(x => x.EmployeeId == employeeId.Value)
-                .AsQueryable();
-
-            if (fromDate.HasValue)
-            {
-                query = query.Where(x => x.AttendanceDate >= fromDate.Value.Date);
-            }
-
-            if (toDate.HasValue)
-            {
-                query = query.Where(x => x.AttendanceDate <= toDate.Value.Date);
-            }
-
-            var data = await query
-                .OrderByDescending(x => x.AttendanceDate)
-                .Select(x => new
-                {
-                    x.Id,
-                    x.EmployeeId,
-                    EmployeeName = x.Employee != null ? x.Employee.Name : null,
-                    x.AttendanceDate,
-                    x.CheckInTime,
-                    x.CheckOutTime,
-                    x.Status
-                })
-                .ToListAsync();
-
-            return Ok(data);
+            return Ok(await _attendanceService.GetEmployeeAttendanceAsync(employeeId.Value, fromDate, toDate));
         }
 
-        [Authorize(Roles = "Admin,HR")]
+        [Authorize(Roles = AppRoles.AdminOrHr)]
         [HasPermission("CanEditAttendance")]
         [HttpGet("all")]
         public async Task<IActionResult> GetAllAttendance([FromQuery] int? employeeId, [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
         {
-            var query = _context.Attendances
-                .Include(x => x.Employee)
-                .AsQueryable();
+            return Ok(await _attendanceService.GetAllAttendanceAsync(employeeId, fromDate, toDate));
+        }
 
-            if (employeeId.HasValue)
+        [Authorize(Roles = AppRoles.AdminOrHr)]
+        [HasPermission("CanEditAttendance")]
+        [HttpGet("today-summary")]
+        public async Task<IActionResult> GetTodaySummary(
+            [FromQuery] DateTime? date,
+            [FromQuery] double overtimeAfterHours = 8,
+            [FromQuery] decimal standardMonthlyHours = 208,
+            [FromQuery] string lateAfter = "09:15")
+        {
+            var reportDate = (date ?? DateTime.UtcNow).Date;
+            var response = await _attendanceReportingService.GetTodaySummaryAsync(
+                reportDate,
+                overtimeAfterHours,
+                ParseTime(lateAfter, new TimeSpan(9, 15, 0)),
+                standardMonthlyHours);
+
+            return Ok(response);
+        }
+
+        [Authorize(Roles = AppRoles.AdminOrHr)]
+        [HasPermission("CanEditAttendance")]
+        [HttpGet("late-employees")]
+        public async Task<IActionResult> GetLateEmployees(
+            [FromQuery] DateTime? date,
+            [FromQuery] decimal standardMonthlyHours = 208,
+            [FromQuery] string lateAfter = "09:15")
+        {
+            var reportDate = (date ?? DateTime.UtcNow).Date;
+            var rows = await _attendanceReportingService.GetAttendanceRowsAsync(
+                reportDate,
+                reportDate,
+                null,
+                8,
+                ParseTime(lateAfter, new TimeSpan(9, 15, 0)),
+                standardMonthlyHours);
+
+            return Ok(rows.Where(x => x.IsLate).ToList());
+        }
+
+        [Authorize(Roles = AppRoles.AdminOrHr)]
+        [HasPermission("CanEditAttendance")]
+        [HttpGet("overtime")]
+        public async Task<IActionResult> GetOvertime(
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int? employeeId,
+            [FromQuery] double overtimeAfterHours = 8,
+            [FromQuery] decimal standardMonthlyHours = 208)
+        {
+            var to = (toDate ?? DateTime.UtcNow).Date;
+            var from = (fromDate ?? to).Date;
+            if (from > to)
             {
-                query = query.Where(x => x.EmployeeId == employeeId.Value);
+                return BadRequest("FromDate cannot be after ToDate.");
             }
 
-            if (fromDate.HasValue)
+            var response = await _attendanceReportingService.GetOvertimeReportAsync(
+                from,
+                to,
+                employeeId,
+                overtimeAfterHours,
+                standardMonthlyHours);
+
+            return Ok(response);
+        }
+
+        [Authorize(Roles = AppRoles.AdminOrHr)]
+        [HasPermission("CanEditAttendance")]
+        [HttpGet("monthly-report")]
+        public async Task<IActionResult> GetMonthlyReport(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] int? employeeId,
+            [FromQuery] double overtimeAfterHours = 8,
+            [FromQuery] decimal standardMonthlyHours = 208,
+            [FromQuery] string lateAfter = "09:15")
+        {
+            if (year < 2000 || month is < 1 or > 12)
             {
-                query = query.Where(x => x.AttendanceDate >= fromDate.Value.Date);
+                return BadRequest("Valid year and month are required.");
             }
 
-            if (toDate.HasValue)
-            {
-                query = query.Where(x => x.AttendanceDate <= toDate.Value.Date);
-            }
+            var response = await _attendanceReportingService.GetMonthlyReportAsync(
+                year,
+                month,
+                employeeId,
+                overtimeAfterHours,
+                ParseTime(lateAfter, new TimeSpan(9, 15, 0)),
+                standardMonthlyHours);
 
-            var data = await query
-                .OrderByDescending(x => x.AttendanceDate)
-                .Select(x => new
-                {
-                    x.Id,
-                    x.EmployeeId,
-                    EmployeeName = x.Employee != null ? x.Employee.Name : null,
-                    x.AttendanceDate,
-                    x.CheckInTime,
-                    x.CheckOutTime,
-                    x.Status
-                })
-                .ToListAsync();
-
-            return Ok(data);
+            return Ok(response);
         }
 
         private async Task<int?> ResolveEmployeeIdAsync()
         {
-            var employeeIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (int.TryParse(employeeIdClaim, out var employeeId))
-            {
-                return employeeId;
-            }
+            return await _attendanceService.ResolveEmployeeIdAsync(
+                User.FindFirstValue(ClaimTypes.NameIdentifier),
+                User.Identity?.Name);
+        }
 
-            var username = User.Identity?.Name;
-            if (string.IsNullOrWhiteSpace(username))
-            {
-                return null;
-            }
-
-            return await _context.Employees
-                .Where(x => x.IsActive && x.Email == username)
-                .Select(x => (int?)x.Id)
-                .FirstOrDefaultAsync();
+        private static TimeSpan ParseTime(string value, TimeSpan fallback)
+        {
+            return TimeSpan.TryParse(value, out var time) ? time : fallback;
         }
     }
 }

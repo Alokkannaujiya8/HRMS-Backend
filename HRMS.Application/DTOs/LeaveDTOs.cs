@@ -1,8 +1,10 @@
+using HRMS.Domain.Constants;
+
 namespace HRMS.Application.DTOs
 {
     public class ApplyLeaveRequest
     {
-        public string LeaveType { get; set; } = "Casual";
+        public string LeaveType { get; set; } = LeaveTypes.Casual;
 
         public DateTime FromDate { get; set; }
 

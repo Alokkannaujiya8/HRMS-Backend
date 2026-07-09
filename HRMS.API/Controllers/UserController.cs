@@ -1,38 +1,43 @@
 using HRMS.API.Authorization;
-using HRMS.Domain.Entities;
-using HRMS.Infrastructure.Data;
+using HRMS.Application.DTOs;
+using HRMS.Application.Interfaces;
+using HRMS.Application.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace HRMS.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    [Authorize(Roles = "Admin,HR")]
-    public class UserController : ControllerBase
+    [Authorize(Roles = AppRoles.AdminOrHr)]
+    public class UserController : ApiControllerBase
     {
-        private readonly HrmsDbContext _context;
+        private readonly IUserManagementService _userManagementService;
+        private readonly IAuthService _authService;
 
-        public UserController(HrmsDbContext context)
+        public UserController(IUserManagementService userManagementService, IAuthService authService)
         {
-            _context = context;
+            _userManagementService = userManagementService;
+            _authService = authService;
         }
+
         [HttpGet]
         [HasPermission("CanManageUsers")]
         public async Task<IActionResult> GetUsers()
         {
-            var users = await _context.Users.ToListAsync();
-            return Ok(users);
+            return Ok(await _userManagementService.GetUsersAsync());
         }
 
         [HttpPost]
         [HasPermission("CanManageUsers")]
-        public async Task<IActionResult> AddUser(AppUser user)
+        public async Task<IActionResult> AddUser(RegisterRequest user)
         {
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
-            return Ok(user);
+            var response = await _authService.RegisterAsync(user);
+
+            if (response.Message == "Username already exists!" || response.Message == "Employee mapping is invalid.")
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
         }
     }
 }

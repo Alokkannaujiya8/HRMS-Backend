@@ -1,4 +1,5 @@
 using HRMS.Application.Interfaces;
+using HRMS.Domain.Constants;
 using HRMS.Domain.Entities;
 using HRMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -40,7 +41,7 @@ namespace HRMS.Infrastructure.Services
                     {
                         EmployeeId = employeeId,
                         AttendanceDate = today,
-                        Status = "Absent"
+                        Status = AttendanceStatuses.Absent
                     });
 
                     continue;
@@ -48,7 +49,7 @@ namespace HRMS.Infrastructure.Services
 
                 if (!attendance.CheckInTime.HasValue)
                 {
-                    attendance.Status = "Absent";
+                    attendance.Status = AttendanceStatuses.Absent;
                 }
             }
 

@@ -1,50 +1,27 @@
 using HRMS.API.Authorization;
+using HRMS.Application.Interfaces;
+using HRMS.Application.Security;
 using HRMS.Domain.Entities;
-using HRMS.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace HRMS.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    [Authorize(Roles = "Admin,HR")]
-    public class SalaryStructureController : ControllerBase
+    [Authorize(Roles = AppRoles.AdminOrHr)]
+    public class SalaryStructureController : ApiControllerBase
     {
-        private readonly HrmsDbContext _context;
+        private readonly ISalaryStructureService _salaryStructureService;
 
-        public SalaryStructureController(HrmsDbContext context)
+        public SalaryStructureController(ISalaryStructureService salaryStructureService)
         {
-            _context = context;
+            _salaryStructureService = salaryStructureService;
         }
 
         [HttpPost]
         [HasPermission("CanViewSalary")]
         public async Task<IActionResult> AddOrUpdate(SalaryStructure request)
         {
-            var employeeExists = await _context.Employees.AnyAsync(e => e.Id == request.EmployeeId && e.IsActive);
-            if (!employeeExists)
-            {
-                return BadRequest("Employee not found.");
-            }
-
-            var existing = await _context.SalaryStructures.FirstOrDefaultAsync(x => x.EmployeeId == request.EmployeeId);
-            if (existing == null)
-            {
-                request.CreatedAt = DateTime.UtcNow;
-                await _context.SalaryStructures.AddAsync(request);
-            }
-            else
-            {
-                existing.Base = request.Base;
-                existing.HRA = request.HRA;
-                existing.DA = request.DA;
-                existing.PFDeductions = request.PFDeductions;
-                existing.Tax = request.Tax;
-            }
-
-            await _context.SaveChangesAsync();
+            await _salaryStructureService.AddOrUpdateAsync(request);
             return Ok(new { Message = "Salary structure saved successfully." });
         }
 
@@ -52,13 +29,8 @@ namespace HRMS.API.Controllers
         [HasPermission("CanViewSalary")]
         public async Task<IActionResult> GetByEmployee(int employeeId)
         {
-            var structure = await _context.SalaryStructures.FirstOrDefaultAsync(x => x.EmployeeId == employeeId);
-            if (structure == null)
-            {
-                return NotFound("Salary structure not found.");
-            }
-
-            return Ok(structure);
+            var structure = await _salaryStructureService.GetByEmployeeAsync(employeeId);
+            return structure == null ? NotFound("Salary structure not found.") : Ok(structure);
         }
     }
 }

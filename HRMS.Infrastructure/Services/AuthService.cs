@@ -42,7 +42,7 @@ namespace HRMS.Infrastructure.Services
             {
                 Username = request.Username,
                 Password = passwordHash,
-                Role = string.IsNullOrWhiteSpace(request.Role) ? "Employee" : request.Role,
+                Role = string.IsNullOrWhiteSpace(request.Role) ? AppRoles.Employee : request.Role,
                 EmployeeId = request.EmployeeId
             };
 
@@ -96,9 +96,54 @@ namespace HRMS.Infrastructure.Services
             return await CreateTokenResponseAsync(existingToken.User, "Token refreshed successfully.");
         }
 
+        public async Task<AuthResponse> ChangePasswordAsync(string username, ChangePasswordRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return new AuthResponse { Message = "User not found." };
+            }
+
+            if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+            {
+                return new AuthResponse { Message = "New password must be at least 6 characters." };
+            }
+
+            if (request.NewPassword != request.ConfirmPassword)
+            {
+                return new AuthResponse { Message = "New password and confirm password do not match." };
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null || string.IsNullOrWhiteSpace(user.Password))
+            {
+                return new AuthResponse { Message = "User not found." };
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.Password))
+            {
+                return new AuthResponse { Message = "Current password is incorrect." };
+            }
+
+            user.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+            var activeRefreshTokens = await _context.RefreshTokens
+                .Where(x => x.UserId == user.Id && !x.IsRevoked)
+                .ToListAsync();
+
+            foreach (var refreshToken in activeRefreshTokens)
+            {
+                refreshToken.IsRevoked = true;
+                refreshToken.RevokedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return new AuthResponse { Message = "Password changed successfully." };
+        }
+
         private async Task<AuthResponse> CreateTokenResponseAsync(AppUser user, string message)
         {
-            var role = user.Role ?? "Employee";
+            var role = user.Role ?? AppRoles.Employee;
             var permissions = RolePermissionStore.GetPermissionsForRole(role);
 
             var accessToken = _jwtService.GenerateToken(

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
+using HRMS.Domain.Constants;
+
 namespace HRMS.Domain.Entities
 {
     public class LeaveBalance
@@ -10,7 +12,7 @@ namespace HRMS.Domain.Entities
 
         public Employee? Employee { get; set; }
 
-        public string LeaveType { get; set; } = "Casual";
+        public string LeaveType { get; set; } = LeaveTypes.Casual;
 
         public int TotalLeaves { get; set; } = 20;
 

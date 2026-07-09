@@ -5,9 +5,7 @@ using System.IO;
 
 namespace HRMS.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class EmployeeController : ControllerBase
+    public class EmployeeController : ApiControllerBase
     {
         private readonly IEmployeeService _service;
         private readonly IEmailService _emailService;

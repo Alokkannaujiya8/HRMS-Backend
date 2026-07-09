@@ -1,3 +1,5 @@
+using HRMS.Domain.Constants;
+
 namespace HRMS.Domain.Entities
 {
     public class LeaveRequest
@@ -8,7 +10,7 @@ namespace HRMS.Domain.Entities
 
         public Employee? Employee { get; set; }
 
-        public string LeaveType { get; set; } = "Casual";
+        public string LeaveType { get; set; } = LeaveTypes.Casual;
 
         public DateTime FromDate { get; set; }
 
@@ -16,7 +18,7 @@ namespace HRMS.Domain.Entities
 
         public string? Reason { get; set; }
 
-        public string Status { get; set; } = "Pending";
+        public string Status { get; set; } = LeaveStatuses.Pending;
 
         public DateTime AppliedOn { get; set; } = DateTime.UtcNow;
 

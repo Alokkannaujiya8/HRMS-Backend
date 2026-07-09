@@ -1,66 +1,33 @@
 using HRMS.API.Authorization;
+using HRMS.Application.Interfaces;
+using HRMS.Application.Security;
 using HRMS.Domain.Entities;
-using HRMS.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace HRMS.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class DepartmentController : ControllerBase
+    public class DepartmentController : ApiControllerBase
     {
-        private readonly HrmsDbContext _context;
+        private readonly IDepartmentService _departmentService;
 
-        public DepartmentController(HrmsDbContext context)
+        public DepartmentController(IDepartmentService departmentService)
         {
-            _context = context;
+            _departmentService = departmentService;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetDepartments()
         {
-            var departments = await _context.Departments.ToListAsync();
-            return Ok(departments);
+            return Ok(await _departmentService.GetDepartmentsAsync());
         }
 
-        [Authorize(Roles = "Admin,HR")]
+        [Authorize(Roles = AppRoles.AdminOrHr)]
         [HasPermission("CanManageDepartments")]
         [HttpPost]
         public async Task<IActionResult> AddDepartment(Department dept)
         {
-            if (string.IsNullOrWhiteSpace(dept.Code))
-            {
-                return BadRequest("Department code is required.");
-            }
-
-            var normalizedCode = dept.Code.Trim().ToUpperInvariant();
-
-            var exists = await _context.Departments.AnyAsync(x => x.Code == normalizedCode);
-            if (exists)
-            {
-                return BadRequest($"Department code '{normalizedCode}' already exists.");
-            }
-
-            dept.Code = normalizedCode;
-            dept.Name = dept.Name?.Trim();
-            dept.CreatedDate = DateTime.UtcNow;
-
-            var userName = User?.Identity?.Name ?? "System";
-            await _context.Database.ExecuteSqlRawAsync("EXEC sp_set_session_context @key=N'AppUser', @value={0}", userName);
-
-            try
-            {
-                await _context.Departments.AddAsync(dept);
-                await _context.SaveChangesAsync();
-            }
-            finally
-            {
-                await _context.Database.ExecuteSqlRawAsync("EXEC sp_set_session_context @key=N'AppUser', @value=NULL");
-            }
-
-            return Ok(dept);
+            return Ok(await _departmentService.AddDepartmentAsync(dept, User?.Identity?.Name));
         }
     }
 }

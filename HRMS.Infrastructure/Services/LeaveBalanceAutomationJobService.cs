@@ -1,4 +1,5 @@
 using HRMS.Application.Interfaces;
+using HRMS.Domain.Constants;
 using HRMS.Domain.Entities;
 using HRMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +36,7 @@ namespace HRMS.Infrastructure.Services
                     await _context.LeaveBalances.AddAsync(new LeaveBalance
                     {
                         EmployeeId = employeeId,
-                        LeaveType = "Casual",
+                        LeaveType = LeaveTypes.Casual,
                         TotalLeaves = MonthlyCredit,
                         UsedLeaves = 0
                     });

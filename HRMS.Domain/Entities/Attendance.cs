@@ -1,3 +1,5 @@
+using HRMS.Domain.Constants;
+
 namespace HRMS.Domain.Entities
 {
     public class Attendance
@@ -14,6 +16,6 @@ namespace HRMS.Domain.Entities
 
         public DateTime? CheckOutTime { get; set; }
 
-        public string Status { get; set; } = "Present";
+        public string Status { get; set; } = AttendanceStatuses.Present;
     }
 }

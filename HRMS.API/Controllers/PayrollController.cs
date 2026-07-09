@@ -1,40 +1,62 @@
 using HRMS.API.Authorization;
+using HRMS.Application.Interfaces;
+using HRMS.Application.Security;
 using HRMS.Domain.Entities;
-using HRMS.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace HRMS.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
     [Authorize]
-    public class PayrollController : ControllerBase
+    public class PayrollController : ApiControllerBase
     {
-        private readonly HrmsDbContext _context;
+        private readonly IPayrollManagementService _payrollManagementService;
+        private readonly IAttendanceReportingService _attendanceReportingService;
 
-        public PayrollController(HrmsDbContext context)
+        public PayrollController(
+            IPayrollManagementService payrollManagementService,
+            IAttendanceReportingService attendanceReportingService)
         {
-            _context = context;
+            _payrollManagementService = payrollManagementService;
+            _attendanceReportingService = attendanceReportingService;
         }
 
         [HttpGet]
         [HasPermission("CanViewSalary")]
         public async Task<IActionResult> GetPayrolls()
         {
-            var payrolls = await _context.Payrolls.ToListAsync();
-            return Ok(payrolls);
+            return Ok(await _payrollManagementService.GetPayrollsAsync());
+        }
+
+        [HttpGet("overtime-dashboard")]
+        [Authorize(Roles = AppRoles.AdminOrHr)]
+        [HasPermission("CanViewSalary")]
+        public async Task<IActionResult> GetOvertimePayrollDashboard(
+            [FromQuery] int year,
+            [FromQuery] int month,
+            [FromQuery] double overtimeAfterHours = 8,
+            [FromQuery] decimal standardMonthlyHours = 208)
+        {
+            if (year < 2000 || month is < 1 or > 12)
+            {
+                return BadRequest("Valid year and month are required.");
+            }
+
+            var response = await _attendanceReportingService.GetPayrollOvertimeDashboardAsync(
+                year,
+                month,
+                overtimeAfterHours,
+                standardMonthlyHours);
+
+            return Ok(response);
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,HR")]
+        [Authorize(Roles = AppRoles.AdminOrHr)]
         [HasPermission("CanViewSalary")]
         public async Task<IActionResult> AddPayroll(Payroll payroll)
         {
-            await _context.Payrolls.AddAsync(payroll);
-            await _context.SaveChangesAsync();
-            return Ok(payroll);
+            return Ok(await _payrollManagementService.AddPayrollAsync(payroll));
         }
     }
 }
