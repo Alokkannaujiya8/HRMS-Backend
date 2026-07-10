@@ -22,7 +22,7 @@ namespace HRMS.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Employee> GetByIdAsync(int id)
+        public async Task<Employee?> GetByIdAsync(int id)
         {
             return await _context.Employees.FindAsync(id);
         }

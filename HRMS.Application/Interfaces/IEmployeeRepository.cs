@@ -6,7 +6,7 @@ namespace HRMS.Application.Interfaces
     {
         Task<List<Employee>> GetAllAsync();
 
-        Task<Employee> GetByIdAsync(int id);
+        Task<Employee?> GetByIdAsync(int id);
 
         Task AddAsync(Employee employee);
 

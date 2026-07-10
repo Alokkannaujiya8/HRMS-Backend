@@ -1,4 +1,4 @@
-﻿using HRMS.Application.Interfaces;
+using HRMS.Application.Interfaces;
 using HRMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using System.IO;
@@ -30,7 +30,12 @@ namespace HRMS.API.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetEmployee(int id)
         {
-            return Ok(await _service.GetEmployee(id));
+            var emp = await _service.GetEmployee(id);
+            if (emp == null)
+            {
+                return NotFound(new { Message = "Employee not found." });
+            }
+            return Ok(emp);
         }
 
         [HttpPost]

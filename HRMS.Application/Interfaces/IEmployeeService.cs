@@ -6,7 +6,7 @@ namespace HRMS.Application.Interfaces
     {
         Task<List<Employee>> GetEmployees();
 
-        Task<Employee> GetEmployee(int id);
+        Task<Employee?> GetEmployee(int id);
 
         Task AddEmployee(Employee employee);
 
