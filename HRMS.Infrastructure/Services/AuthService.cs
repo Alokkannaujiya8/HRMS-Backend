@@ -22,7 +22,8 @@ namespace HRMS.Infrastructure.Services
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
-            if (await _context.Users.AnyAsync(u => u.Username == request.Username))
+            var trimmedUsername = (request.Username ?? string.Empty).Trim();
+            if (await _context.Users.AnyAsync(u => u.Username != null && u.Username.ToLower() == trimmedUsername.ToLower()))
             {
                 return new AuthResponse { Message = "Username already exists!" };
             }
@@ -40,7 +41,7 @@ namespace HRMS.Infrastructure.Services
 
             var newUser = new AppUser
             {
-                Username = request.Username,
+                Username = trimmedUsername,
                 Password = passwordHash,
                 Role = string.IsNullOrWhiteSpace(request.Role) ? AppRoles.Employee : request.Role,
                 EmployeeId = request.EmployeeId
@@ -54,9 +55,10 @@ namespace HRMS.Infrastructure.Services
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+            var trimmedUsername = (request.Username ?? string.Empty).Trim();
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username != null && u.Username.ToLower() == trimmedUsername.ToLower());
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
+            if (user == null || string.IsNullOrWhiteSpace(user.Password) || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
             {
                 return new AuthResponse { Message = "Invalid Username or Password" };
             }
@@ -113,7 +115,7 @@ namespace HRMS.Infrastructure.Services
                 return new AuthResponse { Message = "New password and confirm password do not match." };
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username != null && u.Username.ToLower() == username.Trim().ToLower());
             if (user == null || string.IsNullOrWhiteSpace(user.Password))
             {
                 return new AuthResponse { Message = "User not found." };

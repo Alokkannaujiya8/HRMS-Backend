@@ -1,176 +1,151 @@
 using HRMS.API.Authorization;
-using HRMS.Application.Interfaces;
+using HRMS.Application.Features.Attendance.Commands.CheckIn;
+using HRMS.Application.Features.Attendance.Commands.CheckOut;
+using HRMS.Application.Features.Attendance.Queries.GetAllAttendance;
+using HRMS.Application.Features.Attendance.Queries.GetEmployeeAttendance;
+using HRMS.Application.Features.Attendance.Queries.GetMonthlyAttendanceReport;
+using HRMS.Application.Features.Attendance.Queries.GetOvertimeReport;
+using HRMS.Application.Features.Attendance.Queries.GetTodaySummary;
 using HRMS.Application.Security;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace HRMS.API.Controllers
 {
+    /// <summary>
+    /// API Controller managing Attendance operations using CQRS pattern with MediatR.
+    /// Strictly contains zero business logic; delegates execution to Command and Query handlers.
+    /// </summary>
     [Authorize]
     public class AttendanceController : ApiControllerBase
     {
-        private readonly IAttendanceService _attendanceService;
-        private readonly IAttendanceReportingService _attendanceReportingService;
+        private readonly ISender _mediator;
 
-        public AttendanceController(
-            IAttendanceService attendanceService,
-            IAttendanceReportingService attendanceReportingService)
+        public AttendanceController(ISender mediator)
         {
-            _attendanceService = attendanceService;
-            _attendanceReportingService = attendanceReportingService;
+            _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         }
 
+        /// <summary>
+        /// Records check-in for the logged-in employee.
+        /// </summary>
         [Authorize(Roles = AppRoles.Employee)]
         [HttpPost("check-in")]
-        public async Task<IActionResult> CheckIn()
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CheckIn(CancellationToken cancellationToken)
         {
-            var employeeId = await ResolveEmployeeIdAsync();
-            if (employeeId == null)
-            {
-                return BadRequest("Employee mapping not found for logged-in user.");
-            }
-
-            return Ok(await _attendanceService.CheckInAsync(employeeId.Value));
+            var result = await _mediator.Send(new CheckInCommand(User), cancellationToken);
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Records check-out for the logged-in employee.
+        /// </summary>
         [Authorize(Roles = AppRoles.Employee)]
         [HttpPost("check-out")]
-        public async Task<IActionResult> CheckOut()
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CheckOut(CancellationToken cancellationToken)
         {
-            var employeeId = await ResolveEmployeeIdAsync();
-            if (employeeId == null)
-            {
-                return BadRequest("Employee mapping not found for logged-in user.");
-            }
-
-            return Ok(await _attendanceService.CheckOutAsync(employeeId.Value));
+            var result = await _mediator.Send(new CheckOutCommand(User), cancellationToken);
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Retrieves attendance history for the logged-in employee.
+        /// </summary>
         [Authorize(Roles = AppRoles.Employee)]
         [HttpGet("my")]
-        public async Task<IActionResult> GetMyAttendance([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetMyAttendance(
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            CancellationToken cancellationToken)
         {
-            var employeeId = await ResolveEmployeeIdAsync();
-            if (employeeId == null)
-            {
-                return BadRequest("Employee mapping not found for logged-in user.");
-            }
-
-            return Ok(await _attendanceService.GetEmployeeAttendanceAsync(employeeId.Value, fromDate, toDate));
+            var result = await _mediator.Send(new GetEmployeeAttendanceQuery(User, fromDate, toDate), cancellationToken);
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Retrieves all employee attendance records with optional filtering.
+        /// </summary>
         [Authorize(Roles = AppRoles.AdminOrHr)]
         [HasPermission("CanEditAttendance")]
         [HttpGet("all")]
-        public async Task<IActionResult> GetAllAttendance([FromQuery] int? employeeId, [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAllAttendance(
+            [FromQuery] int? employeeId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            CancellationToken cancellationToken)
         {
-            return Ok(await _attendanceService.GetAllAttendanceAsync(employeeId, fromDate, toDate));
+            var result = await _mediator.Send(new GetAllAttendanceQuery(employeeId, fromDate, toDate), cancellationToken);
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Retrieves today's attendance summary report.
+        /// </summary>
         [Authorize(Roles = AppRoles.AdminOrHr)]
         [HasPermission("CanEditAttendance")]
         [HttpGet("today-summary")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetTodaySummary(
             [FromQuery] DateTime? date,
             [FromQuery] double overtimeAfterHours = 8,
             [FromQuery] decimal standardMonthlyHours = 208,
-            [FromQuery] string lateAfter = "09:15")
+            [FromQuery] string lateAfter = "09:15",
+            CancellationToken cancellationToken = default)
         {
-            var reportDate = (date ?? DateTime.UtcNow).Date;
-            var response = await _attendanceReportingService.GetTodaySummaryAsync(
-                reportDate,
-                overtimeAfterHours,
-                ParseTime(lateAfter, new TimeSpan(9, 15, 0)),
-                standardMonthlyHours);
-
-            return Ok(response);
+            var query = new GetTodaySummaryQuery(date, overtimeAfterHours, standardMonthlyHours, lateAfter);
+            var result = await _mediator.Send(query, cancellationToken);
+            return ToActionResult(result);
         }
 
-        [Authorize(Roles = AppRoles.AdminOrHr)]
-        [HasPermission("CanEditAttendance")]
-        [HttpGet("late-employees")]
-        public async Task<IActionResult> GetLateEmployees(
-            [FromQuery] DateTime? date,
-            [FromQuery] decimal standardMonthlyHours = 208,
-            [FromQuery] string lateAfter = "09:15")
-        {
-            var reportDate = (date ?? DateTime.UtcNow).Date;
-            var rows = await _attendanceReportingService.GetAttendanceRowsAsync(
-                reportDate,
-                reportDate,
-                null,
-                8,
-                ParseTime(lateAfter, new TimeSpan(9, 15, 0)),
-                standardMonthlyHours);
-
-            return Ok(rows.Where(x => x.IsLate).ToList());
-        }
-
+        /// <summary>
+        /// Retrieves overtime report across date range.
+        /// </summary>
         [Authorize(Roles = AppRoles.AdminOrHr)]
         [HasPermission("CanEditAttendance")]
         [HttpGet("overtime")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetOvertime(
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate,
             [FromQuery] int? employeeId,
             [FromQuery] double overtimeAfterHours = 8,
-            [FromQuery] decimal standardMonthlyHours = 208)
+            [FromQuery] decimal standardMonthlyHours = 208,
+            CancellationToken cancellationToken = default)
         {
-            var to = (toDate ?? DateTime.UtcNow).Date;
-            var from = (fromDate ?? to).Date;
-            if (from > to)
-            {
-                return BadRequest("FromDate cannot be after ToDate.");
-            }
-
-            var response = await _attendanceReportingService.GetOvertimeReportAsync(
-                from,
-                to,
-                employeeId,
-                overtimeAfterHours,
-                standardMonthlyHours);
-
-            return Ok(response);
+            var query = new GetOvertimeReportQuery(fromDate, toDate, employeeId, overtimeAfterHours, standardMonthlyHours);
+            var result = await _mediator.Send(query, cancellationToken);
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Retrieves monthly attendance breakdown report.
+        /// </summary>
         [Authorize(Roles = AppRoles.AdminOrHr)]
         [HasPermission("CanEditAttendance")]
         [HttpGet("monthly-report")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetMonthlyReport(
             [FromQuery] int year,
             [FromQuery] int month,
             [FromQuery] int? employeeId,
             [FromQuery] double overtimeAfterHours = 8,
             [FromQuery] decimal standardMonthlyHours = 208,
-            [FromQuery] string lateAfter = "09:15")
+            [FromQuery] string lateAfter = "09:15",
+            CancellationToken cancellationToken = default)
         {
-            if (year < 2000 || month is < 1 or > 12)
-            {
-                return BadRequest("Valid year and month are required.");
-            }
-
-            var response = await _attendanceReportingService.GetMonthlyReportAsync(
-                year,
-                month,
-                employeeId,
-                overtimeAfterHours,
-                ParseTime(lateAfter, new TimeSpan(9, 15, 0)),
-                standardMonthlyHours);
-
-            return Ok(response);
-        }
-
-        private async Task<int?> ResolveEmployeeIdAsync()
-        {
-            return await _attendanceService.ResolveEmployeeIdAsync(
-                User.FindFirstValue(ClaimTypes.NameIdentifier),
-                User.Identity?.Name);
-        }
-
-        private static TimeSpan ParseTime(string value, TimeSpan fallback)
-        {
-            return TimeSpan.TryParse(value, out var time) ? time : fallback;
+            var query = new GetMonthlyAttendanceReportQuery(year, month, employeeId, overtimeAfterHours, standardMonthlyHours, lateAfter);
+            var result = await _mediator.Send(query, cancellationToken);
+            return ToActionResult(result);
         }
     }
 }

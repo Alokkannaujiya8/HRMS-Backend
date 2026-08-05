@@ -1,8 +1,12 @@
 using Hangfire;
 using HRMS.API.Constants;
 using HRMS.API.HangfireSupport;
+using HRMS.API.Hubs;
 using HRMS.API.Middleware;
 using HRMS.Application.Interfaces;
+using HRMS.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace HRMS.API.Extensions
 {
@@ -10,16 +14,24 @@ namespace HRMS.API.Extensions
     {
         public static WebApplication UseHrmsRequestPipeline(this WebApplication app)
         {
+            // Allow CORS before HTTPS redirection to prevent CORS preflight redirect blocks
+            app.UseCors(ApiConstants.AllowAngularAppCorsPolicy);
+
+            app.UseMiddleware<CorrelationIdMiddleware>();
+            app.UseMiddleware<PerformanceLoggingMiddleware>();
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseSerilogRequestLogging();
 
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
             }
+            else
+            {
+                app.UseHttpsRedirection();
+            }
 
-            app.UseHttpsRedirection();
             app.UseStaticFiles();
-            app.UseCors(ApiConstants.AllowAngularAppCorsPolicy);
 
             app.UseHangfireDashboard(
                 "/hangfire",
@@ -35,6 +47,22 @@ namespace HRMS.API.Extensions
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
+            app.MapHub<HrmsHub>("/hubs/notifications");
+
+            return app;
+        }
+
+        public static async Task<WebApplication> ApplyPendingMigrationsAsync(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<HrmsDbContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<WebApplication>>();
+
+            logger.LogInformation("Applying pending EF Core database migrations...");
+            await dbContext.Database.MigrateAsync();
+
+            logger.LogInformation("Seeding default database credentials...");
+            await DbInitializer.SeedDefaultUsersAsync(dbContext, logger);
 
             return app;
         }

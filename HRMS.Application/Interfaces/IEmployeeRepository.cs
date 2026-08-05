@@ -1,17 +1,16 @@
+using HRMS.Application.Common.Interfaces;
 using HRMS.Domain.Entities;
 
 namespace HRMS.Application.Interfaces
 {
-    public interface IEmployeeRepository
+    /// <summary>
+    /// Specialized repository contract for Employee entity management.
+    /// </summary>
+    public interface IEmployeeRepository : IGenericRepository<Employee>
     {
-        Task<List<Employee>> GetAllAsync();
-
-        Task<Employee?> GetByIdAsync(int id);
-
-        Task AddAsync(Employee employee);
-
-        Task UpdateAsync(Employee employee);
-
-        Task DeleteAsync(int id);
+        /// <summary>
+        /// Retrieves active employees along with department details.
+        /// </summary>
+        Task<List<Employee>> GetAllActiveWithDepartmentsAsync(CancellationToken cancellationToken = default);
     }
 }

@@ -1,52 +1,82 @@
+using HRMS.Application.Features.Employees.Commands.CreateEmployee;
+using HRMS.Application.Features.Employees.Commands.DeleteEmployee;
+using HRMS.Application.Features.Employees.Commands.UpdateEmployee;
+using HRMS.Application.Features.Employees.Queries.GetEmployeeById;
+using HRMS.Application.Features.Employees.Queries.GetEmployees;
 using HRMS.Application.Interfaces;
 using HRMS.Domain.Entities;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using System.IO;
 
 namespace HRMS.API.Controllers
 {
+    /// <summary>
+    /// API Controller managing Employee entity operations using CQRS pattern with MediatR.
+    /// </summary>
     public class EmployeeController : ApiControllerBase
     {
-        private readonly IEmployeeService _service;
+        private readonly ISender _mediator;
         private readonly IEmailService _emailService;
+        private readonly IFileStorageService _fileStorageService;
         private readonly ILogger<EmployeeController> _logger;
 
         public EmployeeController(
-            IEmployeeService service,
+            ISender mediator,
             IEmailService emailService,
+            IFileStorageService fileStorageService,
             ILogger<EmployeeController> logger)
         {
-            _service = service;
-            _emailService = emailService;
-            _logger = logger;
+            _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+            _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
+            _fileStorageService = fileStorageService ?? throw new ArgumentNullException(nameof(fileStorageService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>
+        /// Retrieves list of active employees via GetEmployeesQuery.
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetEmployees()
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetEmployees(CancellationToken cancellationToken)
         {
-            return Ok(await _service.GetEmployees());
+            var result = await _mediator.Send(new GetEmployeesQuery(), cancellationToken);
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Retrieves specific employee details by ID via GetEmployeeByIdQuery.
+        /// </summary>
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetEmployee(int id)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetEmployee(int id, CancellationToken cancellationToken)
         {
-            var emp = await _service.GetEmployee(id);
-            if (emp == null)
-            {
-                return NotFound(new { Message = "Employee not found." });
-            }
-            return Ok(emp);
+            var result = await _mediator.Send(new GetEmployeeByIdQuery(id), cancellationToken);
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Creates a new employee record via CreateEmployeeCommand and dispatches welcome email.
+        /// </summary>
         [HttpPost]
-        public async Task<IActionResult> AddEmployee(Employee emp)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> AddEmployee([FromBody] Employee emp, CancellationToken cancellationToken)
         {
-            await _service.AddEmployee(emp);
+            var command = new CreateEmployeeCommand(
+                emp.Name,
+                emp.Email,
+                emp.Mobile,
+                emp.Salary,
+                emp.DepartmentId,
+                emp.JoinDate,
+                emp.Designation,
+                emp.Address);
 
-            if (!string.IsNullOrWhiteSpace(emp.Email))
+            var result = await _mediator.Send(command, cancellationToken);
+            if (result.IsSuccess && !string.IsNullOrWhiteSpace(emp.Email))
             {
                 var displayName = string.IsNullOrWhiteSpace(emp.Name) ? "Employee" : emp.Name;
-
                 var htmlBody = $@"
                     <h2>Welcome to HRMS, {displayName}!</h2>
                     <p>Your employee profile has been created successfully.</p>
@@ -56,10 +86,7 @@ namespace HRMS.API.Controllers
 
                 try
                 {
-                    await _emailService.SendEmailAsync(
-                        emp.Email,
-                        "Welcome to HRMS",
-                        htmlBody);
+                    await _emailService.SendEmailAsync(emp.Email, "Welcome to HRMS", htmlBody);
                 }
                 catch (Exception ex)
                 {
@@ -67,47 +94,108 @@ namespace HRMS.API.Controllers
                 }
             }
 
-            return Ok("Employee Added");
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Updates an existing employee profile via UpdateEmployeeCommand.
+        /// </summary>
         [HttpPut]
-        public async Task<IActionResult> UpdateEmployee(Employee emp)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateEmployee([FromBody] Employee emp, CancellationToken cancellationToken)
         {
-            await _service.UpdateEmployee(emp);
-            return Ok("Employee Updated");
+            var command = new UpdateEmployeeCommand(
+                emp.Id,
+                emp.Name,
+                emp.Email,
+                emp.Mobile,
+                emp.Salary,
+                emp.DepartmentId,
+                emp.Designation,
+                emp.Address);
+
+            var result = await _mediator.Send(command, cancellationToken);
+            return ToActionResult(result);
         }
 
+        /// <summary>
+        /// Soft deletes an employee by ID via DeleteEmployeeCommand.
+        /// </summary>
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteEmployee(int id)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeleteEmployee(int id, CancellationToken cancellationToken)
         {
-            await _service.DeleteEmployee(id);
-            return Ok("Employee Deleted");
+            var result = await _mediator.Send(new DeleteEmployeeCommand(id), cancellationToken);
+            return ToActionResult(result);
         }
 
-
+        /// <summary>
+        /// Uploads an employee photo asset.
+        /// </summary>
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadPhoto(IFormFile file)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UploadPhoto(IFormFile file, CancellationToken cancellationToken)
         {
             if (file == null || file.Length == 0)
-                return BadRequest("No File uploaded");
-
-
-            var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-
-            if (!Directory.Exists(uploadFolder))
-                Directory.CreateDirectory(uploadFolder);
-
-
-            var uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
-            var filePath = Path.Combine(uploadFolder, uniqueFileName);
-
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(fileStream);
+                return BadRequest(new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Validation Error",
+                    Detail = "No file was uploaded."
+                });
             }
 
-            return Ok(new { photoUrl = $"/uploads/{uniqueFileName}" });
+            var photoUrl = await _fileStorageService.SaveFileAsync(file, "photos", cancellationToken);
+            return Ok(new { photoUrl });
         }
-    } 
-}
 
+        /// <summary>
+        /// Uploads an employee resume document (PDF/DOCX).
+        /// </summary>
+        [HttpPost("upload-resume")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UploadResume(IFormFile file, CancellationToken cancellationToken)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Validation Error",
+                    Detail = "No resume file was uploaded."
+                });
+            }
+
+            var resumeUrl = await _fileStorageService.SaveFileAsync(file, "resumes", cancellationToken);
+            return Ok(new { resumeUrl });
+        }
+
+        /// <summary>
+        /// Uploads an employee identity or compliance document (PAN, Aadhaar, Passport).
+        /// </summary>
+        [HttpPost("upload-document")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UploadDocument([FromForm] string documentType, IFormFile file, CancellationToken cancellationToken)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Validation Error",
+                    Detail = "No document file was uploaded."
+                });
+            }
+
+            var subFolder = string.IsNullOrWhiteSpace(documentType) ? "documents" : $"documents/{documentType.ToLowerInvariant()}";
+            var documentUrl = await _fileStorageService.SaveFileAsync(file, subFolder, cancellationToken);
+            return Ok(new { documentType, documentUrl });
+        }
+    }
+}

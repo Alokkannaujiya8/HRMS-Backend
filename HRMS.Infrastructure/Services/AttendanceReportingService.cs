@@ -22,7 +22,8 @@ namespace HRMS.Infrastructure.Services
             int? employeeId,
             double overtimeAfterHours,
             TimeSpan lateCutoff,
-            decimal standardMonthlyHours)
+            decimal standardMonthlyHours,
+            CancellationToken cancellationToken = default)
         {
             var attendances = await _context.Attendances
                 .Include(x => x.Employee)
@@ -30,15 +31,15 @@ namespace HRMS.Infrastructure.Services
                 .Where(x => !employeeId.HasValue || x.EmployeeId == employeeId.Value)
                 .OrderBy(x => x.AttendanceDate)
                 .ThenBy(x => x.Employee != null ? x.Employee.Name : string.Empty)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var employeeIds = attendances.Select(x => x.EmployeeId).Distinct().ToList();
             var managedSalaries = await _context.SalaryManagements
                 .Where(x => employeeIds.Contains(x.EmployeeId))
                 .Select(x => new { x.EmployeeId, x.TotalSalary })
-                .ToDictionaryAsync(x => x.EmployeeId, x => x.TotalSalary);
+                .ToDictionaryAsync(x => x.EmployeeId, x => x.TotalSalary, cancellationToken);
 
-            var holidaySet = await GetHolidaySetAsync(fromDate.Date, toDate.Date);
+            var holidaySet = await GetHolidaySetAsync(fromDate.Date, toDate.Date, cancellationToken);
 
             return attendances
                 .Select(x =>
@@ -56,19 +57,20 @@ namespace HRMS.Infrastructure.Services
             DateTime date,
             double overtimeAfterHours,
             TimeSpan lateCutoff,
-            decimal standardMonthlyHours)
+            decimal standardMonthlyHours,
+            CancellationToken cancellationToken = default)
         {
             var reportDate = date.Date;
-            var rows = await GetAttendanceRowsAsync(reportDate, reportDate, null, overtimeAfterHours, lateCutoff, standardMonthlyHours);
+            var rows = await GetAttendanceRowsAsync(reportDate, reportDate, null, overtimeAfterHours, lateCutoff, standardMonthlyHours, cancellationToken);
 
             return new AttendanceSummaryResponse
             {
                 Date = reportDate,
-                TotalEmployees = await _context.Employees.CountAsync(x => x.IsActive),
+                TotalEmployees = await _context.Employees.CountAsync(x => x.IsActive, cancellationToken),
                 PresentEmployees = rows.Count(x => string.Equals(x.Status, AttendanceStatuses.Present, StringComparison.OrdinalIgnoreCase)),
                 AbsentEmployees = rows.Count(x => string.Equals(x.Status, AttendanceStatuses.Absent, StringComparison.OrdinalIgnoreCase)),
                 LateEmployees = rows.Count(x => x.IsLate),
-                PendingLeaveRequests = await _context.LeaveRequests.CountAsync(x => x.Status == LeaveStatuses.Pending),
+                PendingLeaveRequests = await _context.LeaveRequests.CountAsync(x => x.Status == LeaveStatuses.Pending, cancellationToken),
                 TotalWorkingHours = Math.Round(rows.Sum(x => x.WorkingHours), 2),
                 TotalOtHours = Math.Round(rows.Sum(x => x.TotalOvertimeHours), 2),
                 RegularOtHours = Math.Round(rows.Sum(x => x.RegularOvertimeHours), 2),
@@ -84,7 +86,8 @@ namespace HRMS.Infrastructure.Services
             DateTime toDate,
             int? employeeId,
             double overtimeAfterHours,
-            decimal standardMonthlyHours)
+            decimal standardMonthlyHours,
+            CancellationToken cancellationToken = default)
         {
             var rows = await GetAttendanceRowsAsync(
                 fromDate.Date,
@@ -92,7 +95,8 @@ namespace HRMS.Infrastructure.Services
                 employeeId,
                 overtimeAfterHours,
                 new TimeSpan(9, 15, 0),
-                standardMonthlyHours);
+                standardMonthlyHours,
+                cancellationToken);
 
             return new OvertimeReportResponse
             {
@@ -114,17 +118,18 @@ namespace HRMS.Infrastructure.Services
             int? employeeId,
             double overtimeAfterHours,
             TimeSpan lateCutoff,
-            decimal standardMonthlyHours)
+            decimal standardMonthlyHours,
+            CancellationToken cancellationToken = default)
         {
             var from = new DateTime(year, month, 1);
             var to = from.AddMonths(1).AddDays(-1);
-            var rows = await GetAttendanceRowsAsync(from, to, employeeId, overtimeAfterHours, lateCutoff, standardMonthlyHours);
+            var rows = await GetAttendanceRowsAsync(from, to, employeeId, overtimeAfterHours, lateCutoff, standardMonthlyHours, cancellationToken);
 
             var leaves = await _context.LeaveRequests
                 .Include(x => x.Employee)
                 .Where(x => x.FromDate.Date <= to && x.ToDate.Date >= from)
                 .Where(x => !employeeId.HasValue || x.EmployeeId == employeeId.Value)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var employeeGroups = rows
                 .GroupBy(x => new { x.EmployeeId, x.EmployeeName })
@@ -181,22 +186,23 @@ namespace HRMS.Infrastructure.Services
             int year,
             int month,
             double overtimeAfterHours,
-            decimal standardMonthlyHours)
+            decimal standardMonthlyHours,
+            CancellationToken cancellationToken = default)
         {
             var from = new DateTime(year, month, 1);
             var to = from.AddMonths(1).AddDays(-1);
-            var rows = await GetAttendanceRowsAsync(from, to, null, overtimeAfterHours, new TimeSpan(9, 15, 0), standardMonthlyHours);
+            var rows = await GetAttendanceRowsAsync(from, to, null, overtimeAfterHours, new TimeSpan(9, 15, 0), standardMonthlyHours, cancellationToken);
 
             var employees = await _context.Employees
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.Name)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var activeEmployeeIds = employees.Select(x => x.Id).ToList();
             var salaries = await _context.SalaryManagements
                 .Where(x => activeEmployeeIds.Contains(x.EmployeeId))
                 .Select(x => new { x.EmployeeId, x.TotalSalary })
-                .ToDictionaryAsync(x => x.EmployeeId, x => x.TotalSalary);
+                .ToDictionaryAsync(x => x.EmployeeId, x => x.TotalSalary, cancellationToken);
 
             var rowGroups = rows
                 .GroupBy(x => x.EmployeeId)
@@ -247,12 +253,12 @@ namespace HRMS.Infrastructure.Services
             };
         }
 
-        private async Task<HashSet<DateTime>> GetHolidaySetAsync(DateTime fromDate, DateTime toDate)
+        private async Task<HashSet<DateTime>> GetHolidaySetAsync(DateTime fromDate, DateTime toDate, CancellationToken cancellationToken = default)
         {
             var holidays = await _context.Holidays
                 .Where(x => x.IsActive && x.HolidayDate >= fromDate && x.HolidayDate <= toDate)
                 .Select(x => x.HolidayDate.Date)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             return holidays.ToHashSet();
         }

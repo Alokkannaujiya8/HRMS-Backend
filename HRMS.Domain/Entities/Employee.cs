@@ -22,6 +22,8 @@ namespace HRMS.Domain.Entities
 
         public string? PhotoUrl { get; set; }
 
+        public string? ResumeUrl { get; set; }
+
         public string? Address { get; set; }
 
         public string? Designation { get; set; }
@@ -29,6 +31,20 @@ namespace HRMS.Domain.Entities
         public string? Division { get; set; }
 
         public string? Pan { get; set; }
+
+        public string? AadhaarNumber { get; set; }
+
+        public bool IsAadhaarVerified { get; set; }
+
+        public string? PassportNumber { get; set; }
+
+        public string? BloodGroup { get; set; }
+
+        public string? MedicalConditions { get; set; }
+
+        public string? EmergencyContactName { get; set; }
+
+        public string? EmergencyContactPhone { get; set; }
 
         public DateTime? Dob { get; set; }
 
@@ -44,14 +60,20 @@ namespace HRMS.Domain.Entities
 
         public string? IfscCode { get; set; }
 
-        public string? AadhaarNumber { get; set; }
-
-        public bool IsAadhaarVerified { get; set; }
-
         public ICollection<EmployeeSkill>? Skills { get; set; }
 
         public ICollection<EmployeeRemark>? Remarks { get; set; }
 
         public ICollection<EmployeeDocument>? Documents { get; set; }
+
+        public ICollection<EmployeeEducation>? Educations { get; set; }
+
+        public ICollection<EmployeeExperience>? Experiences { get; set; }
+
+        public ICollection<EmergencyContact>? EmergencyContacts { get; set; }
+
+        public ICollection<FamilyDetail>? FamilyDetails { get; set; }
+
+        public ICollection<PromotionHistory>? PromotionHistories { get; set; }
     }
 }

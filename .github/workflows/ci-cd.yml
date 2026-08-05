@@ -1,0 +1,96 @@
+name: Enterprise HRMS CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "release/*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test-backend:
+    name: Build & Test ASP.NET Core 9 Backend
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 9 SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore HRMS.sln
+
+    - name: Build Backend Solution
+      run: dotnet build HRMS.sln --configuration Release --no-restore
+
+    - name: Run Unit Tests
+      run: dotnet test HRMS.UnitTests/HRMS.UnitTests.csproj --configuration Release --no-build --verbosity normal
+
+    - name: Publish Backend Artifacts
+      run: dotnet publish HRMS.API/HRMS.API.csproj -c Release -o ./publish-backend
+
+    - name: Upload Backend Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-api-build
+        path: ./publish-backend
+
+  build-and-test-frontend:
+    name: Build & Test Angular 20 Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: '../HR-Management-System/package-lock.json'
+
+    - name: Install Frontend Dependencies
+      working-directory: ../HR-Management-System
+      run: npm ci
+
+    - name: Build Angular Application
+      working-directory: ../HR-Management-System
+      run: npm run build -- --configuration production
+
+    - name: Upload Frontend Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-angular-build
+        path: ../HR-Management-System/dist/hr-management-system/browser
+
+  deploy-docker-containers:
+    name: Build & Push Docker Images
+    needs: [build-and-test-backend, build-and-test-frontend]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and Push Backend Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ghcr.io/${{ github.repository }}/backend:latest

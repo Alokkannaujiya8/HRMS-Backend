@@ -30,10 +30,31 @@ namespace HRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmailVerificationToken")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("EmployeeId")
                         .HasColumnType("int");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastPasswordChangeDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LockoutEnd")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Password")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordResetToken")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RefreshToken")
@@ -42,7 +63,16 @@ namespace HRMS.Infrastructure.Migrations
                     b.Property<DateTime?>("RefreshTokenExpiryTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ResetTokenExpiry")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Role")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TwoFactorSecret")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Username")
@@ -260,6 +290,39 @@ namespace HRMS.Infrastructure.Migrations
                     b.ToTable("Departments");
                 });
 
+            modelBuilder.Entity("HRMS.Domain.Entities.EmergencyContact", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Relationship")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("EmergencyContacts");
+                });
+
             modelBuilder.Entity("HRMS.Domain.Entities.Employee", b =>
                 {
                     b.Property<int>("Id")
@@ -277,6 +340,9 @@ namespace HRMS.Infrastructure.Migrations
                     b.Property<string>("BankAccountNumber")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("BloodGroup")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("DepartmentId")
                         .HasColumnType("int");
 
@@ -290,6 +356,12 @@ namespace HRMS.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmergencyContactName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmergencyContactPhone")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("EmploymentStatus")
@@ -316,6 +388,9 @@ namespace HRMS.Infrastructure.Migrations
                     b.Property<DateTime>("JoinDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("MedicalConditions")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Mobile")
                         .HasColumnType("nvarchar(max)");
 
@@ -325,7 +400,13 @@ namespace HRMS.Infrastructure.Migrations
                     b.Property<string>("Pan")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PassportNumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PhotoUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResumeUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Salary")
@@ -366,6 +447,79 @@ namespace HRMS.Infrastructure.Migrations
                     b.HasIndex("EmployeeId");
 
                     b.ToTable("EmployeeDocuments");
+                });
+
+            modelBuilder.Entity("HRMS.Domain.Entities.EmployeeEducation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Degree")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FieldOfStudy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Institution")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PassingYear")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("PercentageGrade")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("EmployeeEducations");
+                });
+
+            modelBuilder.Entity("HRMS.Domain.Entities.EmployeeExperience", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Designation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FromDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("LastSalary")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ReasonForLeaving")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ToDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("EmployeeExperiences");
                 });
 
             modelBuilder.Entity("HRMS.Domain.Entities.EmployeeRemark", b =>
@@ -423,6 +577,38 @@ namespace HRMS.Infrastructure.Migrations
                     b.HasIndex("EmployeeId");
 
                     b.ToTable("EmployeeSkills");
+                });
+
+            modelBuilder.Entity("HRMS.Domain.Entities.FamilyDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDependent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MemberName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Relationship")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("FamilyDetails");
                 });
 
             modelBuilder.Entity("HRMS.Domain.Entities.Holiday", b =>
@@ -533,6 +719,31 @@ namespace HRMS.Infrastructure.Migrations
                     b.ToTable("LeaveRequests");
                 });
 
+            modelBuilder.Entity("HRMS.Domain.Entities.PasswordHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordHistories");
+                });
+
             modelBuilder.Entity("HRMS.Domain.Entities.Payroll", b =>
                 {
                     b.Property<int>("Id")
@@ -566,6 +777,44 @@ namespace HRMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Payrolls");
+                });
+
+            modelBuilder.Entity("HRMS.Domain.Entities.PromotionHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApprovedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NewDesignation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("NewSalary")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PreviousDesignation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("PreviousSalary")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("PromotionDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("PromotionHistories");
                 });
 
             modelBuilder.Entity("HRMS.Domain.Entities.RefreshToken", b =>
@@ -731,6 +980,17 @@ namespace HRMS.Infrastructure.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("HRMS.Domain.Entities.EmergencyContact", b =>
+                {
+                    b.HasOne("HRMS.Domain.Entities.Employee", "Employee")
+                        .WithMany("EmergencyContacts")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("HRMS.Domain.Entities.Employee", b =>
                 {
                     b.HasOne("HRMS.Domain.Entities.Department", "Department")
@@ -746,6 +1006,28 @@ namespace HRMS.Infrastructure.Migrations
                 {
                     b.HasOne("HRMS.Domain.Entities.Employee", "Employee")
                         .WithMany("Documents")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("HRMS.Domain.Entities.EmployeeEducation", b =>
+                {
+                    b.HasOne("HRMS.Domain.Entities.Employee", "Employee")
+                        .WithMany("Educations")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("HRMS.Domain.Entities.EmployeeExperience", b =>
+                {
+                    b.HasOne("HRMS.Domain.Entities.Employee", "Employee")
+                        .WithMany("Experiences")
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -775,6 +1057,17 @@ namespace HRMS.Infrastructure.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("HRMS.Domain.Entities.FamilyDetail", b =>
+                {
+                    b.HasOne("HRMS.Domain.Entities.Employee", "Employee")
+                        .WithMany("FamilyDetails")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("HRMS.Domain.Entities.LeaveBalance", b =>
                 {
                     b.HasOne("HRMS.Domain.Entities.Employee", "Employee")
@@ -790,6 +1083,28 @@ namespace HRMS.Infrastructure.Migrations
                 {
                     b.HasOne("HRMS.Domain.Entities.Employee", "Employee")
                         .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("HRMS.Domain.Entities.PasswordHistory", b =>
+                {
+                    b.HasOne("HRMS.Domain.Entities.AppUser", "User")
+                        .WithMany("PasswordHistories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("HRMS.Domain.Entities.PromotionHistory", b =>
+                {
+                    b.HasOne("HRMS.Domain.Entities.Employee", "Employee")
+                        .WithMany("PromotionHistories")
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -832,6 +1147,8 @@ namespace HRMS.Infrastructure.Migrations
 
             modelBuilder.Entity("HRMS.Domain.Entities.AppUser", b =>
                 {
+                    b.Navigation("PasswordHistories");
+
                     b.Navigation("RefreshTokens");
                 });
 
@@ -843,6 +1160,16 @@ namespace HRMS.Infrastructure.Migrations
             modelBuilder.Entity("HRMS.Domain.Entities.Employee", b =>
                 {
                     b.Navigation("Documents");
+
+                    b.Navigation("Educations");
+
+                    b.Navigation("EmergencyContacts");
+
+                    b.Navigation("Experiences");
+
+                    b.Navigation("FamilyDetails");
+
+                    b.Navigation("PromotionHistories");
 
                     b.Navigation("Remarks");
 

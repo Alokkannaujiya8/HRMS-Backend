@@ -16,7 +16,7 @@ namespace HRMS.Infrastructure.Services
             _context = context;
         }
 
-        public async Task<int?> ResolveEmployeeIdAsync(string? employeeIdClaim, string? username)
+        public async Task<int?> ResolveEmployeeIdAsync(string? employeeIdClaim, string? username, CancellationToken cancellationToken = default)
         {
             if (int.TryParse(employeeIdClaim, out var employeeId))
             {
@@ -31,14 +31,14 @@ namespace HRMS.Infrastructure.Services
             return await _context.Employees
                 .Where(x => x.IsActive && x.Email == username)
                 .Select(x => (int?)x.Id)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
-        public async Task<AttendanceCheckInResponse> CheckInAsync(int employeeId)
+        public async Task<AttendanceCheckInResponse> CheckInAsync(int employeeId, CancellationToken cancellationToken = default)
         {
             var today = DateTime.UtcNow.Date;
             var existing = await _context.Attendances
-                .FirstOrDefaultAsync(x => x.EmployeeId == employeeId && x.AttendanceDate == today);
+                .FirstOrDefaultAsync(x => x.EmployeeId == employeeId && x.AttendanceDate == today, cancellationToken);
 
             if (existing != null && existing.CheckInTime.HasValue)
             {
@@ -55,7 +55,7 @@ namespace HRMS.Infrastructure.Services
                     Status = AttendanceStatuses.Present
                 };
 
-                await _context.Attendances.AddAsync(existing);
+                await _context.Attendances.AddAsync(existing, cancellationToken);
             }
             else
             {
@@ -63,7 +63,7 @@ namespace HRMS.Infrastructure.Services
                 existing.Status = AttendanceStatuses.Present;
             }
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             return new AttendanceCheckInResponse
             {
@@ -73,11 +73,11 @@ namespace HRMS.Infrastructure.Services
             };
         }
 
-        public async Task<AttendanceCheckOutResponse> CheckOutAsync(int employeeId)
+        public async Task<AttendanceCheckOutResponse> CheckOutAsync(int employeeId, CancellationToken cancellationToken = default)
         {
             var today = DateTime.UtcNow.Date;
             var attendance = await _context.Attendances
-                .FirstOrDefaultAsync(x => x.EmployeeId == employeeId && x.AttendanceDate == today);
+                .FirstOrDefaultAsync(x => x.EmployeeId == employeeId && x.AttendanceDate == today, cancellationToken);
 
             if (attendance == null || !attendance.CheckInTime.HasValue)
             {
@@ -90,7 +90,7 @@ namespace HRMS.Infrastructure.Services
             }
 
             attendance.CheckOutTime = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             var totalHours = (attendance.CheckOutTime.Value - attendance.CheckInTime.Value).TotalHours;
             return new AttendanceCheckOutResponse
@@ -102,17 +102,17 @@ namespace HRMS.Infrastructure.Services
             };
         }
 
-        public Task<IReadOnlyCollection<AttendanceListItemResponse>> GetEmployeeAttendanceAsync(int employeeId, DateTime? fromDate, DateTime? toDate)
+        public Task<IReadOnlyCollection<AttendanceListItemResponse>> GetEmployeeAttendanceAsync(int employeeId, DateTime? fromDate, DateTime? toDate, CancellationToken cancellationToken = default)
         {
-            return GetAttendanceAsync(employeeId, fromDate, toDate);
+            return GetAttendanceAsync(employeeId, fromDate, toDate, cancellationToken);
         }
 
-        public Task<IReadOnlyCollection<AttendanceListItemResponse>> GetAllAttendanceAsync(int? employeeId, DateTime? fromDate, DateTime? toDate)
+        public Task<IReadOnlyCollection<AttendanceListItemResponse>> GetAllAttendanceAsync(int? employeeId, DateTime? fromDate, DateTime? toDate, CancellationToken cancellationToken = default)
         {
-            return GetAttendanceAsync(employeeId, fromDate, toDate);
+            return GetAttendanceAsync(employeeId, fromDate, toDate, cancellationToken);
         }
 
-        private async Task<IReadOnlyCollection<AttendanceListItemResponse>> GetAttendanceAsync(int? employeeId, DateTime? fromDate, DateTime? toDate)
+        private async Task<IReadOnlyCollection<AttendanceListItemResponse>> GetAttendanceAsync(int? employeeId, DateTime? fromDate, DateTime? toDate, CancellationToken cancellationToken = default)
         {
             var query = _context.Attendances
                 .Include(x => x.Employee)
@@ -145,7 +145,7 @@ namespace HRMS.Infrastructure.Services
                     CheckOutTime = x.CheckOutTime,
                     Status = x.Status
                 })
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
     }
 }

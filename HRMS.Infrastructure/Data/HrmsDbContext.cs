@@ -40,6 +40,12 @@ namespace HRMS.Infrastructure.Data
         public DbSet<Holiday> Holidays { get; set; }
         public DbSet<Asset> Assets { get; set; }
         public DbSet<AssetAssignment> AssetAssignments { get; set; }
+        public DbSet<PasswordHistory> PasswordHistories { get; set; }
+        public DbSet<EmployeeEducation> EmployeeEducations { get; set; }
+        public DbSet<EmployeeExperience> EmployeeExperiences { get; set; }
+        public DbSet<EmergencyContact> EmergencyContacts { get; set; }
+        public DbSet<FamilyDetail> FamilyDetails { get; set; }
+        public DbSet<PromotionHistory> PromotionHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
